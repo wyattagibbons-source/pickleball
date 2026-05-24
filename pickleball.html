@@ -1,0 +1,785 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Pickleball Pro</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;700&display=swap');
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{background:#0a0a0a;display:flex;align-items:center;justify-content:center;min-height:100vh;font-family:'DM Sans',sans-serif;overflow:hidden;}
+
+  /* ── MODE SELECT ── */
+  #mode-select{
+    position:fixed;inset:0;z-index:200;
+    background:radial-gradient(ellipse at 50% 40%,#050e1a,#020608);
+    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;padding:30px;text-align:center;
+  }
+  #mode-select h1{font-family:'Bebas Neue',sans-serif;font-size:min(12vw,3.5rem);letter-spacing:8px;color:#42e8f5;text-shadow:0 0 30px rgba(66,232,245,.5);}
+  #mode-select p{color:rgba(255,255,255,.4);font-size:.85rem;letter-spacing:1px;}
+  .mode-btn{
+    width:100%;max-width:300px;padding:18px;border:none;border-radius:14px;cursor:pointer;
+    font-family:'Bebas Neue',sans-serif;font-size:1.5rem;letter-spacing:4px;transition:transform .1s;
+  }
+  .mode-btn:active{transform:scale(.96);}
+  #btn-tv{background:linear-gradient(135deg,#42e8f5,#2ab8c8);color:#000d14;box-shadow:0 0 35px rgba(66,232,245,.4);}
+  #btn-phone{background:rgba(255,255,255,.07);color:#fff;border:1px solid rgba(255,255,255,.15);}
+  .mode-hint{font-size:.7rem;color:rgba(255,255,255,.25);letter-spacing:1px;}
+
+  /* ══ TV MODE ══════════════════════════════════════ */
+  #tv-mode{display:none;width:100%;height:100vh;position:relative;}
+
+  #tv-shell{
+    position:relative;width:min(97vw,172vh);aspect-ratio:16/10.4;margin:auto;top:50%;transform:translateY(-50%);
+    background:linear-gradient(160deg,#2e2e2e 0%,#1c1c1c 50%,#252525 100%);
+    border-radius:20px;padding:1.8% 1.8% 4.8%;
+    box-shadow:0 0 0 2px #0e0e0e,0 0 0 4px #2a2a2a,0 20px 60px rgba(0,0,0,.95);
+  }
+  #tv-shell::before{content:'';position:absolute;top:0;left:0;right:0;height:6px;border-radius:20px 20px 0 0;background:linear-gradient(90deg,#333,#555,#444,#333);}
+  #screen-bezel{position:relative;width:100%;height:100%;background:#000;border-radius:8px;overflow:hidden;box-shadow:0 0 0 3px #080808,0 0 40px rgba(0,0,0,.9) inset;}
+  #tv-canvas{display:block;width:100%;height:100%;}
+  #tv-brand{position:absolute;bottom:-3.8%;left:50%;transform:translateX(-50%);font-family:'Bebas Neue',sans-serif;font-size:1.2vw;letter-spacing:8px;color:#3a3a3a;}
+  #tv-stand-neck{position:absolute;bottom:-7.5%;left:50%;transform:translateX(-50%);width:18%;height:3.2%;background:linear-gradient(180deg,#252525,#1c1c1c);clip-path:polygon(10% 0,90% 0,100% 100%,0 100%);}
+  #tv-base{position:absolute;bottom:-10.5%;left:50%;transform:translateX(-50%);width:40%;height:2.5%;background:linear-gradient(180deg,#222,#161616);border-radius:3px 3px 8px 8px;box-shadow:0 6px 20px rgba(0,0,0,.7);}
+  #power-led{position:absolute;bottom:-3%;right:5.5%;width:7px;height:7px;border-radius:50%;background:#00ff88;box-shadow:0 0 10px #00ff88;animation:ledPulse 3s ease-in-out infinite;}
+  @keyframes ledPulse{0%,100%{opacity:1}50%{opacity:.6}}
+  #scanlines{position:absolute;inset:0;pointer-events:none;z-index:50;background:repeating-linear-gradient(0deg,transparent,transparent 3px,rgba(0,0,0,.04) 3px,rgba(0,0,0,.04) 4px);border-radius:8px;}
+
+  #tv-hud{position:absolute;top:0;left:0;right:0;z-index:20;pointer-events:none;display:flex;justify-content:space-between;align-items:flex-start;padding:1.8% 3%;}
+  .score-side{text-align:center;}
+  .score-label{font-size:1vw;letter-spacing:3px;text-transform:uppercase;color:rgba(255,255,255,.35);margin-bottom:2px;}
+  .score-val{font-family:'Bebas Neue',sans-serif;font-size:5.5vw;line-height:1;filter:drop-shadow(0 0 12px currentColor);}
+  #sv-you{color:#42e8f5;}#sv-cpu{color:#ff4d6d;}
+  #s-divider{font-family:'Bebas Neue',sans-serif;font-size:3.5vw;color:rgba(255,255,255,.18);align-self:center;}
+
+  #serve-indicator{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);z-index:20;pointer-events:none;text-align:center;opacity:0;transition:opacity .4s;}
+  #serve-indicator .big{font-family:'Bebas Neue',sans-serif;font-size:3.5vw;letter-spacing:4px;color:#fff;text-shadow:0 0 30px rgba(255,255,255,.4);}
+  #serve-indicator .sub{font-size:1.2vw;letter-spacing:3px;color:rgba(255,255,255,.5);margin-top:4px;}
+
+  #tv-msg{position:absolute;bottom:3.5%;left:50%;transform:translateX(-50%);font-family:'Bebas Neue',sans-serif;font-size:2.4vw;letter-spacing:4px;color:#fff;pointer-events:none;z-index:20;white-space:nowrap;text-shadow:0 0 20px rgba(0,0,0,1);opacity:0;transition:opacity .25s;}
+  #tv-debug{position:absolute;bottom:9%;left:50%;transform:translateX(-50%);color:rgba(255,255,255,.3);font-family:monospace;font-size:1vw;z-index:20;pointer-events:none;}
+
+  #conn-overlay{position:absolute;inset:0;z-index:80;background:radial-gradient(ellipse at 50% 40%,#050e1a,#020608);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:30px;text-align:center;}
+  #conn-overlay h1{font-family:'Bebas Neue',sans-serif;font-size:4.5vw;letter-spacing:8px;background:linear-gradient(135deg,#42e8f5,#a0f0ff);-webkit-background-clip:text;-webkit-text-fill-color:transparent;filter:drop-shadow(0 0 20px rgba(66,232,245,.4));}
+  #room-display{font-family:'Bebas Neue',sans-serif;font-size:7vw;letter-spacing:16px;color:#fff;background:rgba(66,232,245,.08);border:1px solid rgba(66,232,245,.25);border-radius:14px;padding:14px 44px;margin:6px 0;}
+  #conn-overlay p{color:rgba(255,255,255,.4);font-size:1.2vw;letter-spacing:1px;max-width:500px;line-height:1.8;}
+  #waiting-dots{color:#42e8f5;font-size:1.4vw;letter-spacing:6px;animation:blink 1.4s infinite;}
+  @keyframes blink{0%,100%{opacity:.2}50%{opacity:1}}
+  #conn-status{font-size:.9vw;color:rgba(255,255,255,.35);letter-spacing:2px;}
+
+  #tv-flash{position:absolute;inset:0;pointer-events:none;z-index:15;background:radial-gradient(ellipse at 30% 50%,rgba(66,232,245,.35) 0%,transparent 65%);opacity:0;transition:opacity .06s;}
+  #tv-miss{position:absolute;inset:0;pointer-events:none;z-index:15;background:rgba(200,20,40,.28);opacity:0;transition:opacity .08s;}
+  #tv-smash{position:absolute;inset:0;pointer-events:none;z-index:15;background:radial-gradient(ellipse,rgba(245,230,66,.25) 0%,transparent 60%);opacity:0;transition:opacity .05s;}
+
+  /* ══ PHONE MODE ════════════════════════════════════ */
+  #phone-mode{
+    display:none;width:100%;min-height:100dvh;
+    flex-direction:column;align-items:center;justify-content:space-between;
+    background:linear-gradient(160deg,#0a0f1a,#0d1a0d);padding:20px 16px;
+  }
+  #phone-setup{width:100%;max-width:320px;display:flex;flex-direction:column;align-items:center;gap:14px;text-align:center;}
+  #phone-setup h1{font-family:'Bebas Neue',sans-serif;font-size:2.2rem;letter-spacing:5px;color:#42e8f5;text-shadow:0 0 20px rgba(66,232,245,.5);}
+  #phone-setup p{color:rgba(255,255,255,.5);font-size:.82rem;letter-spacing:1px;}
+  #room-input{width:100%;text-align:center;letter-spacing:10px;font-family:'Bebas Neue',sans-serif;font-size:2.4rem;color:#fff;background:rgba(255,255,255,.07);border:2px solid rgba(255,255,255,.15);border-radius:12px;padding:14px 10px;text-transform:uppercase;outline:none;}
+  #room-input:focus{border-color:rgba(66,232,245,.5);}
+  #connect-btn{width:100%;background:linear-gradient(135deg,#42e8f5,#2ab8c8);color:#000d14;border:none;border-radius:12px;padding:16px;font-family:'Bebas Neue',sans-serif;font-size:1.5rem;letter-spacing:4px;cursor:pointer;box-shadow:0 0 30px rgba(66,232,245,.35);}
+
+  #phone-controller{display:none;width:100%;flex:1;flex-direction:column;align-items:center;gap:14px;}
+  #status-row{display:flex;gap:10px;align-items:center;}
+  #status-dot{width:10px;height:10px;border-radius:50%;background:#f54266;}
+  #status-dot.ok{background:#42e8f5;box-shadow:0 0 8px #42e8f5;}
+  #status-txt{font-size:.72rem;letter-spacing:2px;color:rgba(255,255,255,.4);text-transform:uppercase;}
+
+  #tilt-ring{width:140px;height:140px;border-radius:50%;border:2px solid rgba(66,232,245,.2);background:rgba(66,232,245,.04);position:relative;}
+  #tilt-dot{width:18px;height:18px;border-radius:50%;background:#42e8f5;box-shadow:0 0 14px #42e8f5;position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);transition:left .06s,top .06s;}
+
+  #feedback{font-family:'Bebas Neue',sans-serif;font-size:1.4rem;letter-spacing:3px;color:#f5e642;min-height:30px;text-shadow:0 0 10px rgba(245,230,66,.5);opacity:0;transition:opacity .2s;}
+
+  #swing-btn{width:200px;height:200px;border-radius:50%;background:radial-gradient(circle,rgba(66,232,245,.18) 0%,rgba(66,232,245,.05) 60%,transparent 100%);border:3px solid rgba(66,232,245,.35);display:flex;align-items:center;justify-content:center;flex-direction:column;gap:6px;cursor:pointer;position:relative;}
+  #swing-btn:active{transform:scale(.93);border-color:rgba(66,232,245,.8);}
+  #swing-btn-label{font-family:'Bebas Neue',sans-serif;font-size:1.8rem;letter-spacing:4px;color:#42e8f5;}
+  #swing-btn-sub{font-size:.6rem;letter-spacing:2px;color:rgba(66,232,245,.5);text-transform:uppercase;}
+
+  #motion-row{display:flex;align-items:center;gap:10px;}
+  #motion-bar{width:100px;height:6px;background:rgba(255,255,255,.1);border-radius:3px;overflow:hidden;}
+  #motion-fill{height:100%;width:0%;background:linear-gradient(90deg,#42e8f5,#f5e642,#f54266);border-radius:3px;transition:width .05s;}
+  #motion-label{font-size:.6rem;letter-spacing:2px;color:rgba(255,255,255,.3);text-transform:uppercase;}
+
+  #cal-btn{background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.15);color:rgba(255,255,255,.45);font-size:.65rem;letter-spacing:2px;padding:8px 18px;border-radius:20px;cursor:pointer;text-transform:uppercase;}
+
+  #debug-out{width:100%;max-width:320px;background:rgba(0,0,0,.6);border:1px solid rgba(255,255,255,.1);border-radius:8px;padding:8px 10px;font-family:monospace;font-size:.6rem;color:rgba(255,255,255,.6);max-height:110px;overflow:hidden;}
+</style>
+</head>
+<body>
+
+<!-- MODE SELECT -->
+<div id="mode-select">
+  <h1>🥒 PICKLEBALL PRO</h1>
+  <p>What is this device?</p>
+  <button class="mode-btn" id="btn-tv" onclick="startTV()">📺 TV / COMPUTER</button>
+  <button class="mode-btn" id="btn-phone" onclick="startPhone()">📱 PHONE CONTROLLER</button>
+  <div class="mode-hint">Open this same file on both devices</div>
+</div>
+
+<!-- TV MODE -->
+<div id="tv-mode">
+  <div id="tv-shell">
+    <div id="screen-bezel">
+      <canvas id="tv-canvas"></canvas>
+      <div id="scanlines"></div>
+      <div id="tv-hud">
+        <div class="score-side"><div class="score-label">Player</div><div class="score-val" id="sv-you">0</div></div>
+        <div id="s-divider">—</div>
+        <div class="score-side"><div class="score-val" id="sv-cpu">0</div><div class="score-label">CPU</div></div>
+      </div>
+      <div id="serve-indicator"><div class="big">SWING TO SERVE</div><div class="sub">flick your phone forward</div></div>
+      <div id="tv-flash"></div><div id="tv-miss"></div><div id="tv-smash"></div>
+      <div id="tv-msg"></div>
+      <div id="tv-debug"></div>
+      <div id="conn-overlay">
+        <h1>🥒 PICKLEBALL PRO</h1>
+        <p>Enter this code in the Phone Controller:</p>
+        <div id="room-display">----</div>
+        <p id="conn-status">Connecting to Supabase...</p>
+        <div id="waiting-dots">waiting for phone ···</div>
+      </div>
+    </div>
+    <div id="tv-brand">PICKLEBALL PRO</div>
+    <div id="tv-stand-neck"></div>
+    <div id="tv-base"></div>
+    <div id="power-led"></div>
+  </div>
+</div>
+
+<!-- PHONE MODE -->
+<div id="phone-mode">
+  <div id="phone-setup">
+    <h1>🥒 PICKLEBALL</h1>
+    <p>Phone Controller</p>
+    <p>Enter the code shown on the TV:</p>
+    <input id="room-input" type="text" maxlength="4" placeholder="XXXX" autocomplete="off" autocorrect="off" spellcheck="false">
+    <button id="connect-btn" onclick="phoneConnect()">CONNECT</button>
+  </div>
+  <div id="phone-controller">
+    <div id="status-row">
+      <div id="status-dot"></div>
+      <div id="status-txt">Connecting...</div>
+    </div>
+    <div id="tilt-ring"><div id="tilt-dot"></div></div>
+    <div id="feedback"></div>
+    <div id="swing-btn" ontouchstart="onSwingStart(event)" ontouchend="onSwingEnd(event)" onclick="onSwingClick()">
+      <div id="swing-btn-label">SWING</div>
+      <div id="swing-btn-sub">tap or flick phone</div>
+    </div>
+    <div id="motion-row">
+      <div id="motion-label">Motion</div>
+      <div id="motion-bar"><div id="motion-fill"></div></div>
+    </div>
+    <button id="cal-btn" onclick="calibrate()">⟳ Recalibrate</button>
+    <div id="debug-out"></div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+// ══════════════════════════════════════════════════
+//  SHARED CONFIG
+// ══════════════════════════════════════════════════
+const SUPABASE_URL = 'https://bbbodynqepxvnrdpxciy.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJiYm9keW5xZXB4dm5yZHB4Y2l5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkyMzY0OTksImV4cCI6MjA5NDgxMjQ5OX0.jnLRqr_kNhgDOtwnFjyWbOsnmR2aEkFIijCAL93XYWE';
+
+// ── Raw Supabase Realtime WebSocket ───────────────
+class PickleChannel {
+  constructor(room, role) {
+    this.room = room;
+    this.role = role; // 'tv' or 'phone'
+    this.ws = null;
+    this.ready = false;
+    this.queue = [];
+    this.ref = 1;
+    this.hb = null;
+    this.onMessage = null;
+    this.onReady = null;
+    this.onClose = null;
+  }
+  connect() {
+    const url = 'wss://bbbodynqepxvnrdpxciy.supabase.co/realtime/v1/websocket?apikey=' + SUPABASE_KEY + '&vsn=1.0.0';
+    try { this.ws = new WebSocket(url); } catch(e) { console.error('WS create failed',e); return; }
+    this.ws.onopen = () => {
+      this.ws.send(JSON.stringify({
+        topic: 'realtime:pickleball-' + this.room,
+        event: 'phx_join',
+        payload: { config: { broadcast: { self: false, ack: false } } },
+        ref: String(this.ref++)
+      }));
+      this.hb = setInterval(() => {
+        if (this.ws.readyState === 1)
+          this.ws.send(JSON.stringify({ topic:'phoenix', event:'heartbeat', payload:{}, ref: String(this.ref++) }));
+      }, 20000);
+    };
+    this.ws.onmessage = (e) => {
+      try {
+        const m = JSON.parse(e.data);
+        // Channel join ack
+        if (m.event === 'phx_reply' && m.payload?.status === 'ok' && m.topic?.includes('pickleball')) {
+          this.ready = true;
+          this.queue.forEach(msg => this._raw(msg));
+          this.queue = [];
+          if (this.onReady) this.onReady();
+        }
+        // Incoming broadcast
+        if (m.event === 'broadcast' && m.payload?.event) {
+          if (this.onMessage) this.onMessage(m.payload.event, m.payload.payload || {});
+        }
+      } catch(err) {}
+    };
+    this.ws.onerror = (e) => { console.error('WS error', e); };
+    this.ws.onclose = (e) => {
+      this.ready = false;
+      clearInterval(this.hb);
+      if (this.onClose) this.onClose(e.code);
+    };
+  }
+  send(event, payload) {
+    const msg = JSON.stringify({
+      topic: 'realtime:pickleball-' + this.room,
+      event: 'broadcast',
+      payload: { event, payload },
+      ref: null
+    });
+    if (this.ready && this.ws?.readyState === 1) this._raw(msg);
+    else this.queue.push(msg);
+  }
+  _raw(msg) { try { this.ws.send(msg); } catch(e) {} }
+}
+
+function genCode() {
+  const c='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let s=''; for(let i=0;i<4;i++) s+=c[Math.floor(Math.random()*c.length)]; return s;
+}
+
+// ══════════════════════════════════════════════════
+//  MODE SELECT
+// ══════════════════════════════════════════════════
+function startTV() {
+  document.getElementById('mode-select').style.display = 'none';
+  document.getElementById('tv-mode').style.display = 'block';
+  initTV();
+}
+function startPhone() {
+  document.getElementById('mode-select').style.display = 'none';
+  document.getElementById('phone-mode').style.display = 'flex';
+}
+
+// ══════════════════════════════════════════════════
+//  TV MODE
+// ══════════════════════════════════════════════════
+let tvCh = null;
+let gameRunning = false;
+let phoneConnected = false;
+let latestPaddle = {x:0, y:0, rotZ:0, rotX:0};
+let serving = true;
+let ballInPlay = false;
+let scores = [0, 0];
+
+function initTV() {
+  const ROOM = genCode();
+  document.getElementById('room-display').textContent = ROOM;
+
+  tvCh = new PickleChannel(ROOM, 'tv');
+  tvCh.onReady = () => {
+    document.getElementById('conn-status').textContent = '✅ Ready — enter ' + ROOM + ' on your phone';
+  };
+  tvCh.onMessage = (event, payload) => {
+    if (event !== 'phone') return;
+    if (payload.type === 'phone-hello') {
+      phoneConnected = true;
+      document.getElementById('conn-overlay').style.display = 'none';
+      startGame();
+    }
+    if (payload.type === 'paddle') {
+      latestPaddle = payload;
+      const dbg = document.getElementById('tv-debug');
+      if (dbg) dbg.textContent = '📡 x=' + (payload.x||0).toFixed(2) + ' y=' + (payload.y||0).toFixed(2) + (payload.swing?' 💥SWING':'');
+      if (payload.swing && gameRunning) tryHit(payload.power || 10);
+    }
+    if (payload.type === 'serve' && serving) launchServe();
+  };
+  tvCh.onClose = (code) => {
+    if (!phoneConnected) {
+      document.getElementById('conn-status').textContent = 'Reconnecting... (' + code + ')';
+      setTimeout(() => tvCh.connect(), 2000);
+    }
+  };
+  tvCh.connect();
+
+  initThreeJS();
+}
+
+// ── Three.js scene ─────────────────────────────────
+function initThreeJS() {
+  const canvas = document.getElementById('tv-canvas');
+  const renderer = new THREE.WebGLRenderer({canvas, antialias:true});
+  renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 1.2;
+
+  const scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x87CEEB);
+  scene.fog = new THREE.Fog(0xb8dde8, 20, 55);
+
+  const camera = new THREE.PerspectiveCamera(60, 1, 0.05, 120);
+  camera.position.set(0, 3.2, 12);
+  camera.lookAt(0, 0.8, 0);
+
+  function resize() {
+    const w = canvas.clientWidth, h = canvas.clientHeight;
+    if (canvas.width !== w || canvas.height !== h) {
+      renderer.setSize(w, h, false);
+      camera.aspect = w/h; camera.updateProjectionMatrix();
+    }
+  }
+
+  // Lighting
+  scene.add(new THREE.AmbientLight(0xffffff, 0.65));
+  const sun = new THREE.DirectionalLight(0xfff5e0, 1.6);
+  sun.position.set(8,18,8); sun.castShadow = true;
+  sun.shadow.mapSize.set(2048,2048);
+  sun.shadow.camera.left=-14; sun.shadow.camera.right=14;
+  sun.shadow.camera.top=14; sun.shadow.camera.bottom=-14;
+  sun.shadow.camera.far=60; sun.shadow.bias=-.0005;
+  scene.add(sun);
+  scene.add(new THREE.HemisphereLight(0x87CEEB, 0x3a6e3a, 0.7));
+  const rim = new THREE.DirectionalLight(0xffc0c0, 0.4);
+  rim.position.set(0,8,-12); scene.add(rim);
+
+  // Court
+  const CL=13.4, CW=6.1;
+  const court = new THREE.Mesh(new THREE.PlaneGeometry(CW,CL), new THREE.MeshLambertMaterial({color:0x1e5f8e}));
+  court.rotation.x=-Math.PI/2; court.receiveShadow=true; scene.add(court);
+  const ground = new THREE.Mesh(new THREE.PlaneGeometry(80,80), new THREE.MeshLambertMaterial({color:0x4a8c4a}));
+  ground.rotation.x=-Math.PI/2; ground.position.y=-.005; scene.add(ground);
+
+  function cline(w,l,x,z) {
+    const m=new THREE.Mesh(new THREE.BoxGeometry(w,.01,l),new THREE.MeshLambertMaterial({color:0xffffff}));
+    m.position.set(x,.006,z); scene.add(m);
+  }
+  cline(.05,CL,-CW/2,0); cline(.05,CL,CW/2,0);
+  cline(CW,.05,0,-CL/2); cline(CW,.05,0,CL/2);
+  cline(CW,.05,0,-2.13); cline(CW,.05,0,2.13);
+  cline(.05,CL/2-2.13,0,-(CL/4+2.13/2)); cline(.05,CL/2-2.13,0,(CL/4+2.13/2));
+
+  // Net
+  const ng=new THREE.Group();
+  const pMat=new THREE.MeshLambertMaterial({color:0xaaaaaa});
+  [-CW/2-.35,CW/2+.35].forEach(x=>{
+    const p=new THREE.Mesh(new THREE.CylinderGeometry(.04,.04,.96,12),pMat);
+    p.position.set(x,.48,0);ng.add(p);
+    const b=new THREE.Mesh(new THREE.CylinderGeometry(.07,.09,.08,12),pMat);
+    b.position.set(x,.04,0);ng.add(b);
+  });
+  const nf=new THREE.Mesh(new THREE.PlaneGeometry(CW+.7,.88),new THREE.MeshBasicMaterial({color:0xc8c8d8,transparent:true,opacity:.4,side:THREE.DoubleSide}));
+  nf.position.set(0,.44,0);ng.add(nf);
+  for(let i=0;i<=6;i++){const c=new THREE.Mesh(new THREE.BoxGeometry(CW+.7,.01,.01),new THREE.MeshLambertMaterial({color:0xdddde8}));c.position.set(0,i*.88/6,0);ng.add(c);}
+  for(let i=-15;i<=15;i++){const v=new THREE.Mesh(new THREE.BoxGeometry(.01,.88,.01),new THREE.MeshLambertMaterial({color:0xbbbbcc}));v.position.set(i*.21,.44,0);ng.add(v);}
+  const tt=new THREE.Mesh(new THREE.BoxGeometry(CW+.7,.055,.035),new THREE.MeshLambertMaterial({color:0xffffff}));
+  tt.position.set(0,.9,0);ng.add(tt);
+  scene.add(ng);
+
+  // Fences
+  const fM=new THREE.MeshLambertMaterial({color:0x1a3a1a,transparent:true,opacity:.45,side:THREE.DoubleSide});
+  [[14,5,0,-9,0],[14,5,0,9,Math.PI],[22,5,-7.5,0,Math.PI/2],[22,5,7.5,0,-Math.PI/2]].forEach(([w,h,x,z,ry])=>{
+    const f=new THREE.Mesh(new THREE.PlaneGeometry(w,h),fM.clone());
+    f.position.set(x,h/2,z);f.rotation.y=ry;scene.add(f);
+  });
+
+  // Paddle builder
+  function buildPaddle(faceCol, accentCol, skinCol) {
+    const g=new THREE.Group();
+    const gMat=new THREE.MeshLambertMaterial({color:0x1a0f06});
+    const grip=new THREE.Mesh(new THREE.CylinderGeometry(.026,.032,.32,8),gMat);
+    grip.rotation.z=Math.PI/2; g.add(grip);
+    // Grip wrap
+    for(let i=0;i<8;i++){
+      const b=new THREE.Mesh(new THREE.CylinderGeometry(.029,.029,.038,8),new THREE.MeshLambertMaterial({color:i%2===0?0x222222:0x331100}));
+      b.rotation.z=Math.PI/2; b.position.x=-0.128+i*0.037; g.add(b);
+    }
+    const butt=new THREE.Mesh(new THREE.CylinderGeometry(.034,.030,.028,8),new THREE.MeshLambertMaterial({color:0x111111}));
+    butt.rotation.z=Math.PI/2; butt.position.x=-.175; g.add(butt);
+    // Throat
+    const throat=new THREE.Mesh(new THREE.CylinderGeometry(.13,.032,.11,8),new THREE.MeshLambertMaterial({color:0x111111}));
+    throat.rotation.z=Math.PI/2; throat.position.x=.185; g.add(throat);
+    // Edge guard
+    const edge=new THREE.Mesh(new THREE.BoxGeometry(.32,.34,.024),new THREE.MeshLambertMaterial({color:0x0d0d0d}));
+    edge.position.set(.37,0,0); g.add(edge);
+    // Face
+    const face=new THREE.Mesh(new THREE.BoxGeometry(.308,.328,.018),new THREE.MeshLambertMaterial({color:faceCol}));
+    face.position.set(.37,0,.004); g.add(face);
+    // Accent stripe
+    const acc=new THREE.Mesh(new THREE.BoxGeometry(.308,.042,.022),new THREE.MeshLambertMaterial({color:accentCol}));
+    acc.position.set(.37,.09,.005); g.add(acc);
+    // Holes
+    const hMat=new THREE.MeshLambertMaterial({color:new THREE.Color(faceCol).multiplyScalar(.65)});
+    for(let r=0;r<5;r++) for(let c=0;c<4;c++){
+      const h=new THREE.Mesh(new THREE.CircleGeometry(.009,6),hMat);
+      h.position.set(.37-.04+c*.055,-.06+r*.04,.014); g.add(h);
+    }
+    // Hand
+    const sMat=new THREE.MeshLambertMaterial({color:skinCol});
+    const dsMat=new THREE.MeshLambertMaterial({color:new THREE.Color(skinCol).multiplyScalar(.85)});
+    const fa=new THREE.Mesh(new THREE.CylinderGeometry(.034,.046,.52,10),sMat);
+    fa.rotation.z=Math.PI/2; fa.position.x=-.3; fa.castShadow=true; g.add(fa);
+    const palm=new THREE.Mesh(new THREE.BoxGeometry(.08,.098,.065),sMat);
+    palm.position.set(-.01,-.018,.008); g.add(palm);
+    const kn=new THREE.Mesh(new THREE.BoxGeometry(.08,.02,.03),dsMat);
+    kn.position.set(-.01,.032,.03); g.add(kn);
+    const fLens=[.058,.062,.060,.052], fOff=[-.029,-.01,.01,.029];
+    fOff.forEach((fx,i)=>{
+      const fl=fLens[i];
+      const f1=new THREE.Mesh(new THREE.BoxGeometry(.016,fl*0.45,.016),sMat);
+      f1.position.set(fx,-0.035-(fl*0.45/2),.02); g.add(f1);
+      const f2=new THREE.Mesh(new THREE.BoxGeometry(.015,fl*0.35,.015),sMat);
+      f2.position.set(fx,-0.035-(fl*0.45)-(fl*0.35/2),.019); f2.rotation.x=0.08; g.add(f2);
+      const f3=new THREE.Mesh(new THREE.BoxGeometry(.014,fl*0.22,.014),sMat);
+      f3.position.set(fx,-0.035-(fl*0.45)-(fl*0.35)-(fl*0.22/2),.017); g.add(f3);
+    });
+    const th=new THREE.Mesh(new THREE.BoxGeometry(.016,.04,.016),sMat);
+    th.position.set(.048,.01,.025); th.rotation.z=-.55; g.add(th);
+    return g;
+  }
+
+  const playerPaddle = buildPaddle(0xe8820a, 0x00d4ff, 0xdba07a);
+  playerPaddle.position.set(.5,.88,5.0);
+  playerPaddle.rotation.set(.08,-.22,0);
+  playerPaddle.scale.setScalar(1.05);
+  scene.add(playerPaddle);
+
+  const cpuPaddle = buildPaddle(0xcc1a3a, 0xffd700, 0xc8906a);
+  cpuPaddle.position.set(-.4,.92,-5.0);
+  cpuPaddle.rotation.set(.08,Math.PI+.22,0);
+  cpuPaddle.scale.setScalar(1.05);
+  scene.add(cpuPaddle);
+
+  // Ball
+  const BALL_R=.074;
+  const ballMesh=new THREE.Mesh(new THREE.SphereGeometry(BALL_R,28,28),new THREE.MeshLambertMaterial({color:0xf0e020}));
+  ballMesh.castShadow=true; scene.add(ballMesh);
+  const shadowBlob=new THREE.Mesh(new THREE.CircleGeometry(.14,20),new THREE.MeshBasicMaterial({color:0x000000,transparent:true,opacity:.35}));
+  shadowBlob.rotation.x=-Math.PI/2; shadowBlob.position.y=.003; scene.add(shadowBlob);
+  const TRAIL=14;
+  const trailM=Array.from({length:TRAIL},(_,i)=>{
+    const tm=new THREE.Mesh(new THREE.SphereGeometry(BALL_R*(.25+.75*(i/TRAIL))*.65,8,8),new THREE.MeshBasicMaterial({color:0xf0e020,transparent:true,opacity:(i/TRAIL)*.3}));
+    scene.add(tm); return tm;
+  });
+  const trailPos=[];
+
+  // Game state
+  const GRAVITY=-9.4, COURT_HW=CW/2-.04, CPU_Z=-5.2, PLAYER_Z=5.2, NET_H=.88;
+  let ballPos=new THREE.Vector3(.3,1.05,4.6), ballVel=new THREE.Vector3();
+  let padTarget={x:.5,y:.88,rotZ:0,rotX:.08};
+  let padCurrent={x:.5,y:.88};
+
+  // CPU AI
+  const ai={x:0,y:.95,tx:0,ty:.95,rt:0,swing:0,hitPending:false,hitTimer:0,strategy:'center',strategyT:0,errorMargin:.06};
+  function chooseStrategy(){
+    const r=Math.random();
+    ai.strategy=r<.25?'wide-left':r<.5?'wide-right':r<.68?'drive':r<.8?'lob':r<.9?'dink':'center';
+    ai.strategyT=1.5+Math.random()*2;
+  }
+  chooseStrategy();
+
+  function updateCPU(dt) {
+    ai.strategyT-=dt; if(ai.strategyT<=0) chooseStrategy();
+    ai.rt+=dt;
+    if(ai.rt>.08){
+      if(ballVel.z<0&&ballInPlay){
+        const tZ=(CPU_Z-ballPos.z)/ballVel.z;
+        if(tZ>0&&tZ<3){
+          const px=Math.max(-COURT_HW,Math.min(COURT_HW,ballPos.x+ballVel.x*tZ));
+          const py=Math.max(.3,ballPos.y+ballVel.y*tZ+.5*GRAVITY*tZ*tZ);
+          ai.tx=px+(Math.random()-.5)*ai.errorMargin*2;
+          ai.ty=Math.max(.5,Math.min(1.8,py+(Math.random()-.5)*ai.errorMargin));
+        }
+      } else {
+        const rx=ai.strategy==='wide-left'?-.8:ai.strategy==='wide-right'?.8:0;
+        ai.tx+=(rx-ai.tx)*.3; ai.ty+=(.95-ai.ty)*.3;
+      }
+      ai.tx=Math.max(-CW/2+.3,Math.min(CW/2-.3,ai.tx)); ai.rt=0;
+    }
+    ai.x+=(ai.tx-ai.x)*4.2*dt; ai.y+=(ai.ty-ai.y)*4.2*dt;
+    if(ai.swing>0){ai.swing=Math.max(0,ai.swing-dt*5);cpuPaddle.position.z=CPU_Z-ai.swing*.35;}
+    cpuPaddle.position.x=ai.x; cpuPaddle.position.y=ai.y; cpuPaddle.position.z=ai.z||CPU_Z;
+    cpuPaddle.rotation.y=Math.PI+.22+Math.sin(Date.now()*.0007)*.03;
+    cpuPaddle.rotation.z=(ai.tx-ai.x)*-.3;
+
+    if(!ai.hitPending&&ballInPlay&&ballPos.z<CPU_Z+1.4&&ballVel.z<0){
+      const dx=ballPos.x-ai.x,dy=ballPos.y-ai.y;
+      if(Math.sqrt(dx*dx+dy*dy)<.7){ai.hitPending=true;ai.hitTimer=.04+Math.random()*.08;}
+    }
+    if(ai.hitPending){
+      ai.hitTimer-=dt;
+      if(ai.hitTimer<=0){
+        const s=ai.strategy;
+        let ax=(Math.random()-.5)*3,ay=2+Math.random()*1.5,spd=10+Math.random()*4;
+        if(s==='wide-left'){ax=-(1.8+Math.random()*.8);spd=10+Math.random()*4;}
+        else if(s==='wide-right'){ax=(1.8+Math.random()*.8);spd=10+Math.random()*4;}
+        else if(s==='drive'){ax=(Math.random()-.5)*2.5;ay=1.4+Math.random()*.6;spd=14+Math.random()*4;}
+        else if(s==='lob'){ax=(Math.random()-.5)*1.5;ay=5+Math.random()*2;spd=8+Math.random()*2;}
+        else if(s==='dink'){ax=(Math.random()-.5)*1.2;ay=1.0+Math.random()*.5;spd=6+Math.random()*2;}
+        ballVel.set(ax,ay,spd);
+        ai.hitPending=false; ai.swing=1;
+        tvShowMsg({'wide-left':'📍 WIDE','wide-right':'📍 WIDE','drive':'🚀 DRIVE','lob':'🎈 LOB','dink':'🤫 DINK','center':'CPU HIT'}[s]||'CPU HIT');
+      }
+    }
+  }
+
+  function updateBall(dt) {
+    if(serving){
+      const t=Date.now()*.001;
+      ballPos.set(padCurrent.x+.2+Math.sin(t*.6)*.05,padCurrent.y+.25+Math.sin(t*1.0)*.04,padCurrent.z-.4);
+      ballMesh.position.copy(ballPos); shadowBlob.position.set(ballPos.x,.003,ballPos.z);
+      document.getElementById('serve-indicator').style.opacity='1'; return;
+    }
+    if(!ballInPlay) return;
+    document.getElementById('serve-indicator').style.opacity='0';
+    ballVel.y+=GRAVITY*dt; ballPos.addScaledVector(ballVel,dt);
+    trailPos.unshift(ballPos.clone()); if(trailPos.length>TRAIL) trailPos.pop();
+    trailM.forEach((tm,i)=>{ if(trailPos[i])tm.position.copy(trailPos[i]);else tm.position.set(999,999,999); });
+    if(ballPos.y<=BALL_R){ballPos.y=BALL_R;ballVel.y=Math.abs(ballVel.y)*.54;ballVel.x*=.78;ballVel.z*=.78;if(Math.abs(ballVel.y)<.25)ballVel.y=0;}
+    if(Math.abs(ballPos.x)>COURT_HW){ballPos.x=Math.sign(ballPos.x)*COURT_HW;ballVel.x*=-.6;}
+    if(Math.abs(ballPos.z)<.08&&ballPos.y<NET_H+BALL_R){ballVel.z*=-.35;ballVel.y=Math.abs(ballVel.y)*.25;ballPos.z=Math.sign(ballPos.z||1)*.1;tvShowMsg('🥅 NET!');}
+    const spd=ballVel.length(); if(spd>24) ballVel.multiplyScalar(24/spd);
+    if(ballPos.z>PLAYER_Z+2.8){tvMiss();scores[1]++;tvUpdateScore();if(!tvCheckWin()){tvShowMsg('POINT — CPU 📍');ai.hitPending=false;setTimeout(()=>tvResetBall(1),1000);}ballInPlay=false;return;}
+    if(ballPos.z<CPU_Z-2.8){tvHit();scores[0]++;tvUpdateScore();if(!tvCheckWin()){tvShowMsg('🎉 YOUR POINT!');ai.hitPending=false;setTimeout(()=>tvResetBall(0),1000);}ballInPlay=false;return;}
+    ballMesh.position.copy(ballPos); shadowBlob.position.set(ballPos.x,.003,ballPos.z);
+    shadowBlob.scale.setScalar(Math.max(.15,1.1-ballPos.y*.55));
+    ballMesh.rotation.x+=ballVel.z*dt*5; ballMesh.rotation.z-=ballVel.x*dt*5;
+  }
+
+  function updatePlayerPaddle(dt) {
+    padTarget.x = .5 + (latestPaddle.x||0) * 2.4;
+    padTarget.y = .88 + (latestPaddle.y||0) * 1.2;
+    padTarget.rotZ = latestPaddle.rotZ||0;
+    padTarget.rotX = latestPaddle.rotX||0;
+    padTarget.x = Math.max(-CW/2+.3, Math.min(CW/2-.3, padTarget.x));
+    padTarget.y = Math.max(.25, Math.min(2.2, padTarget.y));
+    padCurrent.x += (padTarget.x-padCurrent.x)*.2;
+    padCurrent.y += (padTarget.y-padCurrent.y)*.2;
+    padCurrent.z = 5.0;
+    playerPaddle.position.x=padCurrent.x; playerPaddle.position.y=padCurrent.y; playerPaddle.position.z=padCurrent.z;
+    playerPaddle.rotation.z += (padTarget.rotZ-playerPaddle.rotation.z)*.2;
+    playerPaddle.rotation.x += ((padTarget.rotX+.08)-playerPaddle.rotation.x)*.2;
+    const t=Date.now()*.001; playerPaddle.rotation.y=-.22+Math.sin(t*.4)*.01;
+  }
+
+  let last=0, camDrift=0;
+  function tvLoop(t=0) {
+    if(!gameRunning) return;
+    requestAnimationFrame(tvLoop);
+    const dt=Math.min((t-last)/1000,.05); last=t;
+    resize(); camDrift+=dt;
+    camera.position.y=3.2+Math.sin(camDrift*.18)*.04;
+    camera.position.x=Math.sin(camDrift*.12)*.06;
+    camera.lookAt(0,.8,0);
+    updatePlayerPaddle(dt); updateBall(dt); updateCPU(dt);
+    renderer.render(scene, camera);
+  }
+
+  // Store refs for game functions
+  window._tvLoop = tvLoop;
+  window._ballPos = ballPos; window._ballVel = ballVel;
+  window._padCurrent = padCurrent; window._padTarget = padTarget;
+  window._playerPaddle = playerPaddle;
+  window._ai = ai;
+  window._trailPos = trailPos;
+}
+
+// Game control functions
+function startGame() {
+  scores=[0,0]; tvUpdateScore(); gameRunning=true;
+  tvResetBall(0); window._tvLoop();
+}
+function tvResetBall(server) {
+  serving=(server===0); ballInPlay=false;
+  const bp=window._ballPos, bv=window._ballVel;
+  if(server===0){bp.set(.3,1.05,4.6);bv.set(0,0,0);}
+  else{bp.set((Math.random()-.5)*2,1.5,-5.2+1.4);bv.set((Math.random()-.5)*2.5,4.5,9+Math.random()*2);ballInPlay=true;serving=false;}
+  window._trailPos.length=0; window._ai.hitPending=false;
+}
+function tryHit(power=10) {
+  if(!gameRunning||serving) return;
+  const bp=window._ballPos, pp=window._playerPaddle, pt=window._padTarget, pc=window._padCurrent;
+  const dist=bp.distanceTo(pp.position);
+  if(dist>0.9) return;
+  const p=Math.min(1,(power-4)/14), speed=10+p*9;
+  window._ballVel.set(-pt.rotZ*7+(Math.random()-.5)*.8, Math.max(.4,2.6-pc.y*1.3+p*1.8), -speed);
+  ballInPlay=true;
+  if(p>.75){tvSmash();tvShowMsg('💥 SMASH!');}
+  else if(p>.4){tvHit();tvShowMsg('⚡ NICE HIT');}
+  else{tvHit();tvShowMsg('🏓 DINK');}
+  pp.position.z-=.3; setTimeout(()=>pp.position.z=5.0,100);
+}
+function launchServe() {
+  if(!serving) return;
+  serving=false; ballInPlay=true;
+  window._ballVel.set((Math.random()-.5)*1.2, 4.2, -11);
+  document.getElementById('serve-indicator').style.opacity='0';
+}
+function tvUpdateScore(){document.getElementById('sv-you').textContent=scores[0];document.getElementById('sv-cpu').textContent=scores[1];}
+function tvCheckWin(){
+  for(let i=0;i<2;i++){
+    if(scores[i]>=11&&scores[i]-scores[1-i]>=2){
+      gameRunning=false; tvShowMsg(i===0?'🏆 YOU WIN!':'🤖 CPU WINS',5000); return true;
+    }
+  } return false;
+}
+let tvMsgTO=null;
+function tvShowMsg(t,d=1800){const el=document.getElementById('tv-msg');el.textContent=t;el.style.opacity='1';clearTimeout(tvMsgTO);tvMsgTO=setTimeout(()=>el.style.opacity='0',d);}
+function tvHit(){const f=document.getElementById('tv-flash');f.style.opacity='1';setTimeout(()=>f.style.opacity='0',120);}
+function tvMiss(){const f=document.getElementById('tv-miss');f.style.opacity='1';setTimeout(()=>f.style.opacity='0',160);}
+function tvSmash(){const f=document.getElementById('tv-smash');f.style.opacity='1';setTimeout(()=>f.style.opacity='0',120);}
+
+// ══════════════════════════════════════════════════
+//  PHONE MODE
+// ══════════════════════════════════════════════════
+let phoneCh = null;
+let motionOn = false;
+let orient = {beta:45, gamma:0};
+let calibBeta=45, calibGamma=0;
+let accelPrev={x:0,y:0,z:0}, accelCur={x:0,y:0,z:0};
+let swingSmooth=0, hitCooldown=0;
+let sendInterval=null;
+
+function dbg(msg) {
+  const el=document.getElementById('debug-out');
+  if(!el) return;
+  const d=document.createElement('div');
+  d.textContent=new Date().toLocaleTimeString('en',{hour12:false,hour:'2-digit',minute:'2-digit',second:'2-digit'})+' '+msg;
+  el.insertBefore(d,el.firstChild);
+  while(el.children.length>10) el.removeChild(el.lastChild);
+}
+
+window.addEventListener('deviceorientation', e=>{
+  if(e.beta===null)return;
+  orient.beta=e.beta||0; orient.gamma=e.gamma||0;
+  updateTiltDot();
+},true);
+
+window.addEventListener('devicemotion', e=>{
+  const ag=e.accelerationIncludingGravity;
+  if(!ag)return;
+  accelPrev={...accelCur};
+  accelCur={x:ag.x||0,y:ag.y||0,z:ag.z||0};
+  detectSwing();
+},true);
+
+function calibrate(){calibBeta=orient.beta;calibGamma=orient.gamma;showPhoneFeedback('CALIBRATED ✓');dbg('Calibrated');}
+
+function updateTiltDot(){
+  const rb=orient.beta-calibBeta, rg=orient.gamma-calibGamma;
+  const dot=document.getElementById('tilt-dot');
+  if(!dot)return;
+  dot.style.left=Math.max(5,Math.min(95,50+rg*1.5))+'%';
+  dot.style.top=Math.max(5,Math.min(95,50-rb*1.5))+'%';
+}
+
+function getPaddleData(){
+  return {
+    x:  -(orient.gamma-calibGamma)/35,
+    y:   (orient.beta -calibBeta )/35,
+    rotZ:-(orient.gamma-calibGamma)/60,
+    rotX: (orient.beta -calibBeta )/60,
+  };
+}
+
+function detectSwing(){
+  if(hitCooldown>0){hitCooldown-=.016;return;}
+  const dx=accelCur.x-accelPrev.x,dy=accelCur.y-accelPrev.y,dz=accelCur.z-accelPrev.z;
+  const mag=Math.sqrt(dx*dx+dy*dy+dz*dz);
+  swingSmooth=swingSmooth*.72+mag*.28;
+  const mf=document.getElementById('motion-fill');
+  if(mf) mf.style.width=Math.min(100,swingSmooth*6)+'%';
+  if(swingSmooth>5.5){
+    phonesBroadcast({type:'paddle',swing:true,power:swingSmooth,...getPaddleData()});
+    showPhoneFeedback(swingSmooth>9?'💥':swingSmooth>6?'⚡':'🏓');
+    navigator.vibrate&&navigator.vibrate(40);
+    hitCooldown=.5; swingSmooth=0;
+  }
+}
+
+function phonesBroadcast(payload){if(phoneCh) phoneCh.send('phone',payload);}
+
+function startPhoneSending(){
+  if(sendInterval)clearInterval(sendInterval);
+  let tick=0;
+  sendInterval=setInterval(()=>{
+    if(!phoneCh||!phoneCh.ready)return;
+    phonesBroadcast({type:'paddle',swing:false,...getPaddleData()});
+    tick++; if(tick%50===0){const pd=getPaddleData();dbg('x='+pd.x.toFixed(2)+' y='+pd.y.toFixed(2));}
+  },40);
+}
+
+let swingHeld=false,swingHoldTimer=null,swingPower=10;
+function onSwingStart(e){e.preventDefault();swingHeld=true;swingPower=10;swingHoldTimer=setTimeout(()=>{swingPower=18;},300);}
+function onSwingEnd(e){e.preventDefault();if(!swingHeld)return;swingHeld=false;clearTimeout(swingHoldTimer);triggerSwing(swingPower);}
+function onSwingClick(){if(motionOn)return;triggerSwing(10);}
+function triggerSwing(power){
+  phonesBroadcast({type:'paddle',swing:true,power,...getPaddleData()});
+  showPhoneFeedback(power>14?'💥 SMASH':power>9?'⚡ HIT':'🏓 DINK');
+  navigator.vibrate&&navigator.vibrate([30,10,20]);
+  dbg('SWING btn power='+power);
+}
+
+document.body.addEventListener('touchstart',e=>{
+  if(e.target.closest('#swing-btn')||e.target.closest('#cal-btn')||e.target.closest('#phone-setup')||e.target.closest('#connect-btn'))return;
+  if(document.getElementById('phone-controller').style.display!=='none'){
+    phonesBroadcast({type:'serve'}); dbg('SERVE sent');
+  }
+},{passive:true});
+
+let fbTO=null;
+function showPhoneFeedback(txt){const el=document.getElementById('feedback');if(!el)return;el.textContent=txt;el.style.opacity='1';clearTimeout(fbTO);fbTO=setTimeout(()=>el.style.opacity='0',900);}
+function setStatus(txt,ok=false){
+  const td=document.getElementById('status-dot'),tt=document.getElementById('status-txt');
+  if(td)td.className=ok?'ok':'';if(tt)tt.textContent=txt;
+}
+
+async function phoneConnect(){
+  const room=document.getElementById('room-input').value.toUpperCase().trim();
+  if(room.length<4){alert('Enter the 4-letter code shown on the TV screen');return;}
+
+  if(typeof DeviceMotionEvent!=='undefined'&&typeof DeviceMotionEvent.requestPermission==='function'){
+    try{const s=await DeviceMotionEvent.requestPermission();if(s==='granted')motionOn=true;dbg('Motion:'+s);}catch(e){dbg('Motion err');}
+    try{await DeviceOrientationEvent.requestPermission();}catch(e){}
+  } else {motionOn=true;dbg('Motion:auto');}
+
+  setTimeout(()=>{calibBeta=orient.beta;calibGamma=orient.gamma;dbg('Auto-cal b='+calibBeta.toFixed(0));},700);
+
+  document.getElementById('phone-setup').style.display='none';
+  document.getElementById('phone-controller').style.display='flex';
+  setStatus('Connecting...');
+  dbg('Connecting to room '+room+'...');
+
+  phoneCh = new PickleChannel(room, 'phone');
+  phoneCh.onReady = () => {
+    setStatus('Connected ✅', true);
+    dbg('Channel joined! Announcing...');
+    phonesBroadcast({type:'phone-hello',room});
+    startPhoneSending();
+  };
+  phoneCh.onMessage = (event, payload) => {
+    if(event==='tv'&&payload.type==='tv-ready') {setStatus('TV found ✅',true);dbg('TV found!');}
+  };
+  phoneCh.onClose = (code) => {
+    setStatus('Reconnecting...');
+    dbg('WS closed ('+code+') retrying...');
+    setTimeout(()=>phoneCh.connect(),2000);
+  };
+  phoneCh.connect();
+  dbg('WS connecting...');
+}
+</script>
+</body>
+</html>
